@@ -1,1 +1,80 @@
+openapi: 3.0.3
+info:
+  title: Online School Payment Gateway Integration API
+  version: 1.0.0
+  description: API для автоматического рекуррентного списания средств по подпискам.
+paths:
+  /v1/payments:
+    post:
+      summary: Создать рекуррентный платеж
+      description: Метод используется бэкендом (планировщиком) для автоматического списания средств по сохраненному токену карты.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Уникальный UUID транзакции для предотвращения повторных списаний при сетевых сбоях.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: Платеж успешно обработан (деньги списаны или отклонены банком).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Неверный формат запроса (ошибка валидации JSON).
+        '409':
+          description: Конфликт идемпотентности (запрос с таким Idempotency-Key уже обрабатывается).
+
+components:
+  schemas:
+    PaymentRequest:
+      type: object
+      required:
+        - amount
+        - currency
+        - rebill_id
+        - order_id
+      properties:
+        amount:
+          type: integer
+          description: Сумма платежа в минимальных единицах валюты (копейки). Например, 1990 руб = 199000.
+          example: 199000
+        currency:
+          type: string
+          description: Трехбуквенный код валюты по ISO 4217.
+          example: "RUB"
+        rebill_id:
+          type: string
+          description: Токен привязанной карты, полученный при первой оплате.
+          example: "tok_platform_987654321"
+        order_id:
+          type: string
+          description: Внутренний ID заказа/транзакции в системе онлайн-школы за текущий расчетный период.
+          example: "ord_2026_09_01_a73b"
+
+    PaymentResponse:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          description: Уникальный ID транзакции на стороне платежного шлюза.
+          example: "pm_ch_881923"
+        status:
+          type: string
+          enum: [succeeded, failed]
+          description: Статус списания средств.
+          example: "succeeded"
+        error_code:
+          type: string
+          description: Код ошибки от банка-эмитента (присутствует, если status = failed).
+          example: "insufficient_funds"
 
