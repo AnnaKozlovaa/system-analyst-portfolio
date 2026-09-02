@@ -1,0 +1,34 @@
+@startuml
+autonumber
+skinparam BoxPadding 10
+skinparam ParticipantPadding 10
+
+actor "Клиент" as User
+box "Контур микросервисов Такси" #LightGreen
+participant "API Gateway / Mobile BFF" as Gateway
+participant "Сервис Заказов\n(Order Service)" as Order
+participant "Сервис Ценообразования\n(Pricing Service)" as Pricing
+database "Гео-сервис машин\n(Geo/Redis)" as Geo
+end box
+
+User -> Gateway: Открывает экран выбора тарифа (Адрес А -> Б)
+Gateway -> Order: Запрос стоимости поездки (REST или gRPC)
+activate Order
+
+Note over Order, Pricing: gRPC вызов по HTTP/2 (Бинарный Protobuf)
+Order -> Pricing: CalculateFare(origin, destination, client_id)
+activate Pricing
+
+Pricing -> Geo: Запрос свободных машин в радиусе и коэффициента Surge
+Geo --> Pricing: Возвращает: Машин рядом = 4, Коэффициент = 1.3 (Повышенный спрос)
+
+Pricing -> Pricing: Расчет базовой стоимости по матрице расстояний\nи применение коэффициента 1.3
+
+Pricing --> Order: FareResponse(request_id, repeated TariffOption)
+deactivate Pricing
+
+Order --> Gateway: Возвращает агрегированные данные
+Gateway --> User: Отображает карточки тарифов (Эконом: 350 руб, Комфорт: 500 руб)
+deactivate Order
+
+@enduml
