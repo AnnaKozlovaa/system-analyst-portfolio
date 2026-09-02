@@ -89,7 +89,7 @@
 
 ```json
 {
-  "\$schema": "https://json-schema.org",
+  "$schema": "https://json-schema.org",
   "title": "PaymentResponseSchema",
   "type": "object",
   "required": ["payment_id", "status"],
