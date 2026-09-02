@@ -5,7 +5,7 @@ skinparam BoxPadding 10
 
 actor "Пекарь" as Baker
 participant "Фронт пекаря" as Front
-box "Внутренний контур Додо" #LightYellow
+box "Внутренний контур пиццерии" #LightYellow
 participant "Бэкенд\n(Сервис заказов)" as Backend
 database "База данных" as DB
 queue "Kafka Broker\n(Топик: order.status-changed)" as Kafka
