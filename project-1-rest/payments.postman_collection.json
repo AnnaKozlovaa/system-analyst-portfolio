@@ -1,1 +1,35 @@
+{
+  "$schema": "https://json-schema.org",
+  "title": "PaymentResponseSchema",
+  "type": "object",
+  "required": ["payment_id", "status"],
+  "properties": {
+    "payment_id": {
+      "type": "string",
+      "pattern": "^pm_[a-zA-Z0-9]+$",
+      "description": "Уникальный идентификатор транзакции в платежном шлюзе"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "failed"],
+      "description": "Итоговый статус проведения транзакции"
+    },
+    "error_code": {
+      "type": "string",
+      "enum": [
+        "insufficient_funds",
+        "card_expired",
+        "card_blocked",
+        "suspected_fraud"
+      ],
+      "description": "Код ошибки. Присутствует только в случае, если status равен failed"
+    }
+  },
+  "if": {
+    "properties": { "status": { "const": "failed" } }
+  },
+  "then": {
+    "required": ["error_code"]
+  }
+}
 
