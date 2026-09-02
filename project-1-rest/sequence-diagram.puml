@@ -1,1 +1,55 @@
+@startuml
+autonumber
+skinparam BoxPadding 10
+skinparam ParticipantPadding 10
+
+actor "Пользователь" as User
+box "Система онлайн-школы" #LightBlue
+participant "Личный кабинет\n(Frontend)" as Front
+participant "Backend\n(Core)" as Backend
+participant "Планировщик\n(Scheduler/Cron)" as Cron
+end box
+participant "Платежный Шлюз\n(API)" as Gateway
+participant "CRM / Сервис\nнотификаций" as CRM
+
+== Этап 1: Первичное оформление и привязка карты ==
+User -> Front: Нажимает "Подписаться"
+Front -> Backend: POST /v1/subscriptions (tariff_id)
+activate Backend
+Backend -> Backend: Создать подписку\nстатус = PENDING
+Backend -> Gateway: POST /v1/payments (amount, recurring=true)
+Gateway --> Backend: 201 Created (payment_url, payment_id)
+Backend --> Front: 201 Created (payment_url)
+deactivate Backend
+
+Front -> User: Перенаправление на форму оплаты
+User -> Gateway: Ввод данных карты и подтверждение
+Gateway -> Gateway: Списание средств
+
+Note over Gateway, Backend: Асинхронное уведомление (Webhook)
+Gateway -> Backend: POST /v1/webhooks/payment (payment_id, status=succeeded, rebill_id="tok_abc123")
+activate Backend
+Backend -> Backend: Сохранить rebill_id;\nСтатус подписки = ACTIVE
+Backend --> Gateway: 200 OK
+Backend -> CRM: Триггер: Отправить приветственное письмо
+deactivate Backend
+
+== Этап 2: Рекуррентное списание (через 30 дней) ==
+Cron -> Backend: Триггер: Пора списать деньги за подписку X
+activate Backend
+Backend -> Gateway: POST /v1/payments (amount, rebill_id="tok_abc123")
+activate Gateway
+Gateway --> Backend: 200 OK (status, error_code если есть)
+deactivate Gateway
+
+alt Сценарий 2.1: Успешное списание (status == "succeeded")
+    Backend -> Backend: Продлить подписку на 30 дней\nСтатус = ACTIVE
+    Backend -> CRM: Триггер: Отправить чек об оплате
+else Сценарий 2.2: Ошибка списания (status == "failed")
+    Backend -> Backend: Изменить статус подписки\nна PAST_DUE (В ожидании оплаты)
+    Backend -> CRM: Триггер: Нотификация "Пополните карту"
+end
+deactivate Backend
+
+@enduml
 
